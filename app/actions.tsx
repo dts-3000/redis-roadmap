@@ -8,28 +8,38 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
-// Fetch the list of bands/songs from the database
+// Fetches the Artist/Song library from Redis
 export async function getMusicLibrary() {
-  const library = await redis.get<Record<string, string[]>>('music_library');
-  return library || {};
+  try {
+    const library = await redis.get<Record<string, string[]>>('music_library');
+    return library || {};
+  } catch (error) {
+    console.error("Library Fetch Error:", error);
+    return {};
+  }
 }
 
+// Submits the 5 votes in one go
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
+  
   const pipeline = redis.pipeline()
   songs.forEach(song => {
     pipeline.zincrby('aus_leaderboard', 1, song)
   })
+  
   await pipeline.exec()
   revalidatePath('/')
 }
 
+// Fetches the top 10 rankings
 export async function getLeaderboard() {
   try {
     const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
     });
+    
     const results = [];
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
@@ -39,7 +49,7 @@ export async function getLeaderboard() {
     }
     return results;
   } catch (error) {
-    console.error("Redis Fetch Error:", error);
+    console.error("Leaderboard Fetch Error:", error);
     return [];
   }
 }
