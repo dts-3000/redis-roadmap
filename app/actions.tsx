@@ -25,13 +25,19 @@ export async function submitFinalVotes(songs: string[]) {
 
 /**
  * Fetches the top 10 songs. 
- * zrevrange ensures the highest scores (votes) are at index 0.
+ * Using zrange with { rev: true } ensures highest scores are first.
  */
 export async function getLeaderboard() {
   try {
-    const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true });
+    // Upstash library uses zrange with a rev option instead of zrevrange
+    const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
+      rev: true, 
+      withScores: true 
+    });
+    
     const results = [];
     
+    // Redis returns [member, score, member, score...]
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
         name: leaderboardRaw[i] as string, 

@@ -52,7 +52,7 @@ export default function Page() {
         </p>
       </header>
 
-      {/* HORIZONTAL LEADERBOARD (High to Low) */}
+      {/* HORIZONTAL LEADERBOARD */}
       <section className="max-w-7xl mx-auto mb-12">
         <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
           {leaderboard.length > 0 ? (
@@ -60,7 +60,7 @@ export default function Page() {
               <div key={item.name} className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[240px]">
                 <span className="text-3xl font-black text-yellow-400">#{index + 1}</span>
                 <div className="flex-1 truncate">
-                  <div className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">Ranked #{index + 1}</div>
+                  <div className="text-[10px] font-black text-slate-300 uppercase tracking-tighter">Current Rank</div>
                   <div className="font-bold text-sm truncate">{item.name}</div>
                 </div>
                 <div className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs">
@@ -69,7 +69,7 @@ export default function Page() {
               </div>
             ))
           ) : (
-            <div className="text-slate-300 italic py-4">Loading live rankings...</div>
+            <div className="text-slate-300 italic py-4">No votes yet. Be the first!</div>
           )}
         </div>
       </section>
@@ -113,9 +113,9 @@ export default function Page() {
                 );
               })
             ) : (
-              <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3">
+              <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-3 text-center">
                 <span className="text-3xl">🎸</span>
-                <p className="italic text-sm">Select a band first</p>
+                <p className="italic text-sm">Select a band to see tracks</p>
               </div>
             )}
           </div>
