@@ -8,36 +8,29 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
-/**
- * Sends multiple votes to Redis in a single pipeline for efficiency
- */
+// Fetch the list of bands/songs from the database
+export async function getMusicLibrary() {
+  const library = await redis.get<Record<string, string[]>>('music_library');
+  return library || {};
+}
+
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
-  
   const pipeline = redis.pipeline()
   songs.forEach(song => {
     pipeline.zincrby('aus_leaderboard', 1, song)
   })
-  
   await pipeline.exec()
   revalidatePath('/')
 }
 
-/**
- * Fetches the top 10 songs. 
- * Using zrange with { rev: true } ensures highest scores are first.
- */
 export async function getLeaderboard() {
   try {
-    // Upstash library uses zrange with a rev option instead of zrevrange
     const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
     });
-    
     const results = [];
-    
-    // Redis returns [member, score, member, score...]
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
         name: leaderboardRaw[i] as string, 
