@@ -1,3 +1,6 @@
+
+/// <reference types="node" />
+
 import { Redis } from '@upstash/redis'
 import { submitVote } from './actions'
 

@@ -1,4 +1,5 @@
 'use server'
+/// <reference types="node" />
 
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
