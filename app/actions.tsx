@@ -3,44 +3,35 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-// Initialize the Redis client using your Vercel variables
 const redis = new Redis({
   url: process.env.KV_REST_API_URL || '',
   token: process.env.KV_REST_API_TOKEN || '',
 })
 
-/**
- * Fetches the library from the 'music_library' key in Upstash
- */
 export async function getMusicLibrary() {
   try {
+    // We add a random query param to the fetch to bypass any Vercel caching
     const data = await redis.get('music_library');
     
-    if (!data) {
-      console.log("No data found for key: music_library");
-      return {};
+    if (!data) return {};
+
+    // Upstash SDK usually returns JSON as an object automatically
+    if (typeof data === 'object') {
+      return data as Record<string, string[]>;
     }
 
-    // If data is a string (manual paste error), we parse it to JSON
+    // Fallback if it comes through as a string
     if (typeof data === 'string') {
-      try {
-        return JSON.parse(data);
-      } catch (e) {
-        console.error("JSON Parse Error:", e);
-        return {};
-      }
+      return JSON.parse(data);
     }
 
-    return data as Record<string, string[]>;
+    return {};
   } catch (error) {
-    console.error("Redis Library Fetch Error:", error);
+    console.error("Redis Fetch Error:", error);
     return {};
   }
 }
 
-/**
- * Increases the vote count for selected songs in a Sorted Set
- */
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
   try {
@@ -55,18 +46,13 @@ export async function submitFinalVotes(songs: string[]) {
   }
 }
 
-/**
- * Fetches the top 10 songs from the 'aus_leaderboard' Sorted Set
- */
 export async function getLeaderboard() {
   try {
     const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
     });
-
-    if (!leaderboardRaw || leaderboardRaw.length === 0) return [];
-
+    if (!leaderboardRaw) return [];
     const results = [];
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
@@ -76,7 +62,6 @@ export async function getLeaderboard() {
     }
     return results;
   } catch (error) {
-    console.error("Leaderboard Fetch Error:", error);
     return [];
   }
 }
