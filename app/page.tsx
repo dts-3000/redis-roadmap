@@ -6,62 +6,86 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
-/// <reference types="node" />
+const MUSIC_DATA: Record<string, string[]> = {
+  "AC/DC": ["Thunderstruck", "It's a Long Way to the Top", "Back in Black"],
+  "Midnight Oil": ["Beds Are Burning", "The Dead Heart", "Blue Sky Mine"],
+  "Cold Chisel": ["Khe Sanh", "Flame Trees", "Bow River"],
+  "Tame Impala": ["The Less I Know The Better", "Let It Happen", "Elephant"],
+  "The Living End": ["Prisoner of Society", "All Torn Down"]
+}
 
-export default async function Page() {
-  // Fetch the current top 10 from the database
-  const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true })
-
-  // Clean up the data for display
-  const results = []
+export default async function Page(props: { searchParams: Promise<{ band?: string }> }) {
+  const searchParams = await props.searchParams;
+  const selectedBand = searchParams.band;
+  
+  // Fetch leaderboard data
+  const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true });
+  const results = [];
   for (let i = 0; i < leaderboardRaw.length; i += 2) {
-    results.push({ name: leaderboardRaw[i], votes: leaderboardRaw[i + 1] })
+    if (leaderboardRaw[i]) {
+      results.push({ 
+        name: leaderboardRaw[i] as string, 
+        votes: parseInt(leaderboardRaw[i + 1] as string) || 0 
+      });
+    }
   }
 
   return (
-    <main className="max-w-xl mx-auto py-20 px-4 font-sans text-slate-900">
-      <h1 className="text-5xl font-black mb-2 text-center">🇦🇺</h1>
-      <h2 className="text-3xl font-bold mb-8 text-center uppercase tracking-tighter">The True Blue Top 10</h2>
-      
-      {/* Voting Input */}
-      <form action={submitVote as any} className="flex flex-col gap-3 mb-12">
-  <label className="text-sm font-bold text-slate-500 uppercase font-sans">Vote for a song</label>
-  <div className="flex gap-2">
-    <input 
-      name="song"
-      placeholder="e.g. Midnight Oil - Beds Are Burning"
-      className="flex-1 p-4 border-2 border-slate-200 rounded-xl focus:border-yellow-400 outline-none transition-all text-black"
-      required
-    />
-    <button type="submit" className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all uppercase">
-      Vote
-    </button>
-  </div>
-</form>
+    <main className="max-w-4xl mx-auto py-10 px-4 font-sans text-slate-900 bg-white">
+      <header className="text-center mb-12">
+        <h1 className="text-5xl font-black italic uppercase tracking-tighter">True Blue Top 10</h1>
+        <p className="text-slate-500 font-bold mt-2">The Ultimate Aussie Music Tally</p>
+      </header>
 
-      {/* Leaderboard UI */}
-      <div className="space-y-3">
-        {results.length === 0 ? (
-          <p className="text-center text-slate-400 italic">No votes yet. Start the tally!</p>
-        ) : (
-          results.map((item, index) => (
-            <div key={item.name as string} className="flex items-center justify-between bg-white border-2 border-slate-100 p-5 rounded-2xl shadow-sm">
-              <div className="flex items-center gap-4">
-                <span className="text-2xl font-black text-slate-300">#{(index + 1)}</span>
-                <span className="font-bold text-lg">{item.name as string}</span>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-slate-400 uppercase">Votes</span>
-                <span className="text-xl font-black text-yellow-500">{item.votes as number}</span>
-              </div>
+      <div className="grid md:grid-cols-2 gap-12">
+        <section>
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">1. Select an Artist</h2>
+          <div className="flex flex-wrap gap-2 mb-10">
+            {Object.keys(MUSIC_DATA).map((band) => (
+              <a 
+                key={band}
+                href={`?band=${encodeURIComponent(band)}`}
+                className={`px-4 py-2 rounded-full border-2 font-bold transition-all ${selectedBand === band ? 'bg-yellow-400 border-yellow-400 text-slate-900' : 'bg-white border-slate-100 hover:border-yellow-200'}`}
+              >
+                {band}
+              </a>
+            ))}
+          </div>
+
+          {selectedBand && (
+            <div className="space-y-4">
+              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">2. Cast Your Vote</h2>
+              {MUSIC_DATA[selectedBand].map((song) => (
+                <form key={song} action={submitVote as any}>
+                  <input type="hidden" name="song" value={`${selectedBand} - ${song}`} />
+                  <button 
+                    type="submit"
+                    className="w-full group p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left font-black hover:bg-slate-900 hover:text-white transition-all flex justify-between items-center"
+                  >
+                    {song}
+                    <span className="text-yellow-500 opacity-0 group-hover:opacity-100 text-xs tracking-widest">+ VOTE NOW</span>
+                  </button>
+                </form>
+              ))}
             </div>
-          ))
-        )}
-      </div>
+          )}
+        </section>
 
-      <footer className="mt-20 text-center text-slate-400 text-xs">
-        Powered by Upstash & Vercel
-      </footer>
+        <section className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl shadow-yellow-200/20">
+          <h2 className="text-2xl font-black mb-8 italic border-b border-slate-800 pb-4">Live Standings</h2>
+          <div className="space-y-4">
+            {results.map((item, index) => (
+              <div key={item.name} className="flex items-center justify-between group">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-500 uppercase">Rank {index + 1}</span>
+                  <span className="font-bold text-lg group-hover:text-yellow-400 transition-colors">{item.name}</span>
+                </div>
+                <div className="text-2xl font-black text-yellow-400">{item.votes}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
     </main>
-  )
+  );
 }
