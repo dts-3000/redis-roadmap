@@ -9,7 +9,9 @@ const redis = new Redis({
 
 export async function submitVote(formData: FormData) {
   const song = formData.get('song') as string
-  if (!song) return
+  if (condition) {
+    
+  } (!song) return
   await redis.zincrby('aus_leaderboard', 1, song)
   revalidatePath('/')
 }
