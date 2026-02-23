@@ -10,15 +10,12 @@ const redis = new Redis({
 
 export async function getMusicLibrary() {
   try {
-    // This forces the server to bypass any cached 'null' results
+    // Fetches the 'music_library' key you created in Upstash
     const data = await redis.get('music_library');
     
-    // Log for your Vercel Dashboard 'Logs' tab
-    console.log("Upstash Fetch Attempt - Found data:", !!data);
-
     if (!data) return {};
 
-    // Upstash returns JSON as an object or a string depending on how it was saved
+    // Handles both JSON objects and stringified JSON
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (error) {
     console.error("Upstash Connection Error:", error);
