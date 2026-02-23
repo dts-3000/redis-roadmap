@@ -3,36 +3,27 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-// We initialize inside the function to ensure process.env is ready
-const getClient = () => {
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
-  
-  if (!url || !token) throw new Error("MISSING_KEYS");
-  
-  return new Redis({ url, token });
-}
+// This connects to the Upstash variables you showed in your screenshot
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL || '',
+  token: process.env.KV_REST_API_TOKEN || '',
+})
 
 export async function getMusicLibrary() {
   try {
-    const redis = getClient();
-    // Fetch data directly from the 'music_library' key shown in your screenshot
     const data = await redis.get('music_library');
-    
     if (!data) return {};
-
-    // Upstash usually returns JSON as an object, but we handle strings just in case
+    // Upstash returns JSON as an object; if it's a string, we parse it
     return typeof data === 'string' ? JSON.parse(data) : data;
-  } catch (error: any) {
-    console.error("Library Fetch Error:", error.message);
-    return null; // Return null so the UI knows it was an error, not just empty
+  } catch (error) {
+    console.error("Upstash Error:", error);
+    return null; 
   }
 }
 
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
   try {
-    const redis = getClient();
     const pipeline = redis.pipeline()
     songs.forEach(song => {
       pipeline.zincrby('aus_leaderboard', 1, song)
@@ -40,13 +31,12 @@ export async function submitFinalVotes(songs: string[]) {
     await pipeline.exec()
     revalidatePath('/')
   } catch (error) {
-    console.error("Vote Submission Error:", error);
+    console.error("Vote Error:", error);
   }
 }
 
 export async function getLeaderboard() {
   try {
-    const redis = getClient();
     const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
