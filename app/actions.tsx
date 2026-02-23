@@ -1,46 +1,21 @@
-"use server";
+'use server'
 
-import { kv } from "@vercel/kv";
-import { revalidatePath } from "next/cache";
-import { Feature } from "./types";
+import { Redis } from '@upstash/redis'
+import { revalidatePath } from 'next/cache'
 
-export async function saveFeature(feature: Feature, formData: FormData) {
-  let newFeature = {
-    ...feature,
-    title: formData.get("feature") as string,
-  };
-  await kv.hset(`item:${newFeature.id}`, newFeature);
-  await kv.zadd("items_by_score", {
-    score: Number(newFeature.score),
-    member: newFeature.id,
-  });
+// This automatically uses your KV_REST_API_URL and TOKEN
+const redis = new Redis({
+  url: process.env.KV_REST_API_URL!,
+  token: process.env.KV_REST_API_TOKEN!,
+})
 
-  revalidatePath("/");
-}
+export async function submitVote(formData: FormData) {
+  const song = formData.get('song') as string
+  if (!song || song.length < 2) return
 
-export async function saveEmail(formData: FormData) {
-  const email = formData.get("email");
-
-  function validateEmail(email: FormDataEntryValue) {
-    const re =
-      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(String(email).toLowerCase());
-  }
-
-  if (email && validateEmail(email)) {
-    await kv.sadd("emails", email);
-    revalidatePath("/");
-  }
-}
-
-export async function upvote(feature: Feature) {
-  const newScore = Number(feature.score) + 1;
-  await kv.hset(`item:${feature.id}`, {
-    ...feature,
-    score: newScore,
-  });
-
-  await kv.zadd("items_by_score", { score: newScore, member: feature.id });
-
-  revalidatePath("/");
+  // We use ZINCRBY to add 1 vote to the song's score in the leaderboard
+  await redis.zincrby('aus_leaderboard', 1, song)
+  
+  // This tells Vercel to refresh the page so the leaderboard updates
+  revalidatePath('/')
 }
