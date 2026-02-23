@@ -7,84 +7,96 @@ const redis = new Redis({
 })
 
 const MUSIC_DATA: Record<string, string[]> = {
-  "AC/DC": ["Thunderstruck", "It's a Long Way to the Top", "Back in Black"],
-  "Midnight Oil": ["Beds Are Burning", "The Dead Heart", "Blue Sky Mine"],
-  "Cold Chisel": ["Khe Sanh", "Flame Trees", "Bow River"],
-  "Tame Impala": ["The Less I Know The Better", "Let It Happen", "Elephant"],
-  "The Living End": ["Prisoner of Society", "All Torn Down"]
+  "AC/DC": ["Thunderstruck", "Back in Black", "Highway to Hell"],
+  "Midnight Oil": ["Beds Are Burning", "Blue Sky Mine", "The Dead Heart"],
+  "Cold Chisel": ["Khe Sanh", "Flame Trees", "Cheap Wine"],
+  "Tame Impala": ["The Less I Know The Better", "Let It Happen"],
+  "Silverchair": ["Tomorrow", "Straight Lines", "Freak"],
+  "Powderfinger": ["My Happiness", "These Days", "Sunsets"]
 }
 
-export default async function Page(props: { searchParams: Promise<{ band?: string }> }) {
+export default async function Page(props: { searchParams: Promise<{ band?: string, song?: string }> }) {
   const searchParams = await props.searchParams;
   const selectedBand = searchParams.band;
-  
-  // Fetch leaderboard data
-  const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true });
-  const results = [];
-  for (let i = 0; i < leaderboardRaw.length; i += 2) {
-    if (leaderboardRaw[i]) {
-      results.push({ 
-        name: leaderboardRaw[i] as string, 
-        votes: parseInt(leaderboardRaw[i + 1] as string) || 0 
-      });
-    }
-  }
+  const currentSelection = searchParams.song;
 
   return (
-    <main className="max-w-4xl mx-auto py-10 px-4 font-sans text-slate-900 bg-white">
-      <header className="text-center mb-12">
-        <h1 className="text-5xl font-black italic uppercase tracking-tighter">True Blue Top 10</h1>
-        <p className="text-slate-500 font-bold mt-2">The Ultimate Aussie Music Tally</p>
-      </header>
-
-      <div className="grid md:grid-cols-2 gap-12">
-        <section>
-          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">1. Select an Artist</h2>
-          <div className="flex flex-wrap gap-2 mb-10">
+    <main className="min-h-screen bg-slate-50 p-6 font-sans">
+      <h1 className="text-3xl font-black text-center mb-10 uppercase tracking-tighter">Music Voter 🇦🇺</h1>
+      
+      {/* 3-Column Layout matching your drawing */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+        
+        {/* COLUMN 1: BAND NAMES */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-[600px] overflow-y-auto">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 pb-2 border-b">Band Names</h2>
+          <div className="flex flex-col gap-2">
             {Object.keys(MUSIC_DATA).map((band) => (
               <a 
                 key={band}
                 href={`?band=${encodeURIComponent(band)}`}
-                className={`px-4 py-2 rounded-full border-2 font-bold transition-all ${selectedBand === band ? 'bg-yellow-400 border-yellow-400 text-slate-900' : 'bg-white border-slate-100 hover:border-yellow-200'}`}
+                className={`p-4 rounded-xl font-bold transition-all border-2 ${selectedBand === band ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-600 border-transparent hover:border-slate-200'}`}
               >
                 {band}
               </a>
             ))}
           </div>
+        </div>
 
-          {selectedBand && (
-            <div className="space-y-4">
-              <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">2. Cast Your Vote</h2>
+        {/* COLUMN 2: SONG NAMES */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-[600px] overflow-y-auto">
+          <h2 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 pb-2 border-b">Song Names</h2>
+          {selectedBand ? (
+            <div className="flex flex-col gap-2">
               {MUSIC_DATA[selectedBand].map((song) => (
-                <form key={song} action={submitVote as any}>
-                  <input type="hidden" name="song" value={`${selectedBand} - ${song}`} />
-                  <button 
-                    type="submit"
-                    className="w-full group p-4 bg-slate-50 border border-slate-200 rounded-2xl text-left font-black hover:bg-slate-900 hover:text-white transition-all flex justify-between items-center"
-                  >
-                    {song}
-                    <span className="text-yellow-500 opacity-0 group-hover:opacity-100 text-xs tracking-widest">+ VOTE NOW</span>
-                  </button>
-                </form>
+                <a 
+                  key={song}
+                  href={`?band=${encodeURIComponent(selectedBand)}&song=${encodeURIComponent(song)}`}
+                  className={`p-4 rounded-xl font-bold transition-all border-2 ${currentSelection === song ? 'bg-yellow-400 border-yellow-400' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}
+                >
+                  {song}
+                </a>
               ))}
             </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-slate-300 italic text-sm text-center">
+              Select a band to see songs
+            </div>
           )}
-        </section>
+        </div>
 
-        <section className="bg-slate-900 text-white p-8 rounded-[2rem] shadow-2xl shadow-yellow-200/20">
-          <h2 className="text-2xl font-black mb-8 italic border-b border-slate-800 pb-4">Live Standings</h2>
-          <div className="space-y-4">
-            {results.map((item, index) => (
-              <div key={item.name} className="flex items-center justify-between group">
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black text-slate-500 uppercase">Rank {index + 1}</span>
-                  <span className="font-bold text-lg group-hover:text-yellow-400 transition-colors">{item.name}</span>
-                </div>
-                <div className="text-2xl font-black text-yellow-400">{item.votes}</div>
+        {/* COLUMN 3: VOTING SLIP */}
+        <div className="bg-slate-900 rounded-2xl shadow-xl p-6 h-[600px] text-white flex flex-col">
+          <h2 className="text-xs font-black text-slate-500 uppercase tracking-widest mb-6 pb-2 border-b border-slate-800">Voting Slip</h2>
+          
+          {currentSelection ? (
+            <div className="flex-1 flex flex-col justify-between">
+              <div>
+                <div className="text-yellow-400 text-xs font-bold uppercase mb-1">Confirming Vote for:</div>
+                <div className="text-2xl font-black leading-tight mb-2">{currentSelection}</div>
+                <div className="text-slate-400 font-medium italic">by {selectedBand}</div>
               </div>
-            ))}
-          </div>
-        </section>
+
+              <form action={submitVote as any}>
+                <input type="hidden" name="song" value={`${selectedBand} - ${currentSelection}`} />
+                <button 
+                  type="submit"
+                  className="w-full bg-yellow-400 text-slate-900 p-5 rounded-xl font-black text-lg uppercase hover:bg-yellow-300 transition-all active:scale-95"
+                >
+                  Confirm & Cast Vote
+                </button>
+                <p className="text-[10px] text-slate-500 text-center mt-4 uppercase font-bold tracking-tighter">
+                  Votes are recorded live to Upstash Redis
+                </p>
+              </form>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-slate-600 italic text-sm text-center">
+              Pick a song to populate your slip
+            </div>
+          )}
+        </div>
+
       </div>
     </main>
   );
