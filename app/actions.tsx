@@ -3,7 +3,6 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-// We are using the "KV_" names because that is what Vercel has in your settings
 const redis = new Redis({
   url: process.env.KV_REST_API_URL || '',
   token: process.env.KV_REST_API_TOKEN || '',
@@ -11,17 +10,13 @@ const redis = new Redis({
 
 export async function getMusicLibrary() {
   try {
-    // LOG FOR DEBUGGING: This will show in your Vercel Logs
-    if (!process.env.KV_REST_API_URL) {
-      console.error("DATA ERROR: KV_REST_API_URL is undefined in the environment.");
-      return {};
-    }
-
     const library = await redis.get('music_library');
     
-    if (!library) {
-      console.warn("DATA WARNING: Key 'music_library' not found in Redis.");
-      return {};
+    if (!library) return {};
+
+    // If Upstash returns it as a string instead of an object, parse it
+    if (typeof library === 'string') {
+      return JSON.parse(library);
     }
 
     return library as Record<string, string[]>;
@@ -47,8 +42,8 @@ export async function getLeaderboard() {
       rev: true, 
       withScores: true 
     });
-    const results = [];
     if (!leaderboardRaw) return [];
+    const results = [];
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
         name: leaderboardRaw[i] as string, 
