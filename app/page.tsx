@@ -25,7 +25,7 @@ export default async function Page(props: { searchParams: Promise<{ band?: strin
       <h1 className="text-3xl font-black text-center mb-10 uppercase tracking-tighter">Music Voter 🇦🇺</h1>
       
       {/* 3-Column Layout matching your drawing */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-full mx-auto">
         
         {/* COLUMN 1: BAND NAMES */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 h-[600px] overflow-y-auto">
