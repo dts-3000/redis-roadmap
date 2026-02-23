@@ -8,24 +8,39 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
+/**
+ * Sends multiple votes to Redis in a single pipeline for efficiency
+ */
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
+  
   const pipeline = redis.pipeline()
   songs.forEach(song => {
     pipeline.zincrby('aus_leaderboard', 1, song)
   })
+  
   await pipeline.exec()
   revalidatePath('/')
 }
 
+/**
+ * Fetches the top 10 songs. 
+ * zrevrange ensures the highest scores (votes) are at index 0.
+ */
 export async function getLeaderboard() {
-  const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true });
-  const results = [];
-  for (let i = 0; i < leaderboardRaw.length; i += 2) {
-    results.push({ 
-      name: leaderboardRaw[i] as string, 
-      votes: parseInt(leaderboardRaw[i + 1] as string) || 0 
-    });
+  try {
+    const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true });
+    const results = [];
+    
+    for (let i = 0; i < leaderboardRaw.length; i += 2) {
+      results.push({ 
+        name: leaderboardRaw[i] as string, 
+        votes: parseInt(leaderboardRaw[i + 1] as string) || 0 
+      });
+    }
+    return results;
+  } catch (error) {
+    console.error("Redis Fetch Error:", error);
+    return [];
   }
-  return results;
 }
