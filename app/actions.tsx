@@ -3,33 +3,43 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-/** * UPDATED: Using your specific environment variable names 
- * to ensure the connection to Upstash is successful.
- */
+// We use a fallback check to ensure the app doesn't crash if variables are missing
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
 })
 
 export async function getMusicLibrary() {
   try {
+    if (!process.env.UPSTASH_REDIS_REST_URL) {
+      console.error("CRITICAL: UPSTASH_REDIS_REST_URL is missing from environment variables");
+      return {};
+    }
+    
     const library = await redis.get('music_library');
-    console.log("Redis Connection Success. Data:", library);
-    return library as Record<string, string[]> || {};
+    // If Redis returns a string (sometimes happens with JSON), we parse it
+    if (typeof library === 'string') {
+      return JSON.parse(library);
+    }
+    return (library as Record<string, string[]>) || {};
   } catch (error) {
-    console.error("Redis Connection Failed:", error);
+    console.error("Redis Fetch Error:", error);
     return {};
   }
 }
 
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
-  const pipeline = redis.pipeline()
-  songs.forEach(song => {
-    pipeline.zincrby('aus_leaderboard', 1, song)
-  })
-  await pipeline.exec()
-  revalidatePath('/')
+  try {
+    const pipeline = redis.pipeline()
+    songs.forEach(song => {
+      pipeline.zincrby('aus_leaderboard', 1, song)
+    })
+    await pipeline.exec()
+    revalidatePath('/')
+  } catch (e) {
+    console.error("Submission error:", e);
+  }
 }
 
 export async function getLeaderboard() {
@@ -39,6 +49,8 @@ export async function getLeaderboard() {
       withScores: true 
     });
     const results = [];
+    if (!leaderboardRaw) return [];
+    
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
         name: leaderboardRaw[i] as string, 
@@ -47,7 +59,6 @@ export async function getLeaderboard() {
     }
     return results;
   } catch (error) {
-    console.error("Leaderboard Fetch Error:", error);
     return [];
   }
 }
