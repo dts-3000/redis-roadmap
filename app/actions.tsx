@@ -1,5 +1,4 @@
 'use server'
-/// <reference types="node" />
 
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
@@ -9,14 +8,15 @@ const redis = new Redis({
   token: process.env.KV_REST_API_TOKEN!,
 })
 
-export async function submitVote(formData: FormData) {
-  const song = formData.get('song') as string
-  
-  if (!song) return
+export async function submitFinalVotes(songs: string[]) {
+  if (!songs || songs.length === 0) return
 
-  // This adds 1 to the song's score in your Upstash database
-  await redis.zincrby('aus_leaderboard', 1, song)
+  // Loop through the 5 songs and increment each one
+  const pipeline = redis.pipeline()
+  songs.forEach(song => {
+    pipeline.zincrby('aus_leaderboard', 1, song)
+  })
   
-  // This refreshes the leaderboard instantly
+  await pipeline.exec()
   revalidatePath('/')
-} // <--- This was the missing bracket!
+}
