@@ -1,17 +1,16 @@
-
-/// <reference types="node" />
-
 import { Redis } from '@upstash/redis'
 import { submitVote } from './actions'
 
 const redis = new Redis({
-  URL: process.env.KV_REST_API_URL!,
+  url: process.env.KV_REST_API_URL!,
   token: process.env.KV_REST_API_TOKEN!,
 })
 
+/// <reference types="node" />
+
 export default async function Page() {
   // Fetch the current top 10 from the database
-  const leaderboardRaw = await redis.zrevrange('aus_leaderboard', 0, 9, { withScores: true })
+  const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { withScores: true })
 
   // Clean up the data for display
   const results = []
@@ -25,20 +24,20 @@ export default async function Page() {
       <h2 className="text-3xl font-bold mb-8 text-center uppercase tracking-tighter">The True Blue Top 10</h2>
       
       {/* Voting Input */}
-      <form action={submitVote} className="flex flex-col gap-3 mb-12">
-        <label className="text-sm font-bold text-slate-500 uppercase">Vote for a song</label>
-        <div className="flex gap-2">
-          <input 
-            name="song"
-            placeholder="e.g. Midnight Oil - Beds Are Burning"
-            className="flex-1 p-4 border-2 border-slate-200 rounded-xl focus:border-yellow-400 outline-none transition-all"
-            required
-          />
-          <button type="submit" className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all">
-            VOTE
-          </button>
-        </div>
-      </form>
+      <form action={submitVote as any} className="flex flex-col gap-3 mb-12">
+  <label className="text-sm font-bold text-slate-500 uppercase font-sans">Vote for a song</label>
+  <div className="flex gap-2">
+    <input 
+      name="song"
+      placeholder="e.g. Midnight Oil - Beds Are Burning"
+      className="flex-1 p-4 border-2 border-slate-200 rounded-xl focus:border-yellow-400 outline-none transition-all text-black"
+      required
+    />
+    <button type="submit" className="bg-slate-900 text-white px-8 py-4 rounded-xl font-bold hover:scale-105 active:scale-95 transition-all uppercase">
+      Vote
+    </button>
+  </div>
+</form>
 
       {/* Leaderboard UI */}
       <div className="space-y-3">

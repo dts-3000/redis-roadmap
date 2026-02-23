@@ -20,4 +20,3 @@ export async function submitVote(formData: FormData) {
   // This refreshes the leaderboard instantly
   revalidatePath('/')
 } // <--- This was the missing bracket!
-}
