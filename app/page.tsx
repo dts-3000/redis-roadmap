@@ -9,7 +9,6 @@ export default function Page() {
   const [votingSlip, setVotingSlip] = useState<string[]>([]);
   const [leaderboard, setLeaderboard] = useState<{name: string, votes: number}[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function initApp() {
@@ -18,16 +17,10 @@ export default function Page() {
           getMusicLibrary(),
           getLeaderboard()
         ]);
-        
-        if (!lib || Object.keys(lib).length === 0) {
-          console.warn("Library is empty. Check Upstash key 'music_library'");
-        }
-        
         setMusicData(lib || {});
         setLeaderboard(board || []);
       } catch (err) {
-        setError("Could not connect to the database.");
-        console.error(err);
+        console.error("App load error:", err);
       } finally {
         setLoading(false);
       }
@@ -47,8 +40,8 @@ export default function Page() {
   };
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-black uppercase text-slate-400 animate-pulse">
-      Connecting...
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 font-black uppercase text-slate-400">
+      Loading Anthems...
     </div>
   );
 
@@ -64,7 +57,7 @@ export default function Page() {
       <section className="max-w-7xl mx-auto mb-12 flex gap-4 overflow-x-auto pb-4 no-scrollbar">
         {leaderboard.length > 0 ? (
           leaderboard.map((item, index) => (
-            <div key={item.name} className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[260px]">
+            <div key={item.name} className="bg-white border-2 border-slate-100 p-4 rounded-2xl flex items-center gap-4 shadow-sm min-w-[240px]">
               <span className="text-3xl font-black text-yellow-400">#{index + 1}</span>
               <div className="flex-1 truncate font-bold text-sm">{item.name}</div>
               <div className="bg-slate-900 text-white px-3 py-1 rounded-lg font-black text-xs">{item.votes}</div>
@@ -72,7 +65,7 @@ export default function Page() {
           ))
         ) : (
           <div className="bg-white p-4 rounded-2xl border-2 border-dashed border-slate-200 text-slate-400 italic w-full text-center text-sm">
-            Waiting for votes...
+            Waiting for the first votes...
           </div>
         )}
       </section>
@@ -93,9 +86,9 @@ export default function Page() {
                 </button>
               ))
             ) : (
-              <div className="text-center mt-20 p-6 border-2 border-red-100 rounded-2xl bg-red-50">
-                <p className="text-red-600 font-bold text-xs uppercase">Check Connection</p>
-                <p className="text-[10px] text-red-400 mt-2 italic">Ensure your Upstash variables are set in Vercel.</p>
+              <div className="text-center mt-20 p-6 border-2 border-slate-100 rounded-2xl bg-slate-50">
+                <p className="text-slate-400 font-bold text-xs uppercase">No Artists Found</p>
+                <p className="text-[10px] text-slate-400 mt-2 italic">Add the 'music_library' key in Upstash.</p>
               </div>
             )}
           </div>
@@ -118,7 +111,7 @@ export default function Page() {
               ))
             ) : (
               <div className="h-full flex items-center justify-center text-slate-300 italic text-sm text-center px-10">
-                Select an artist to see their anthems
+                Select an artist
               </div>
             )}
           </div>
