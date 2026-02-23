@@ -9,58 +9,57 @@ export default function Page() {
   const [votingSlip, setVotingSlip] = useState<string[]>([]);
   const [leaderboard, setLeaderboard] = useState<{name: string, votes: number}[]>([]);
   const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState<'ok' | 'error' | 'empty'>('ok');
 
-  async function refreshData() {
-    const [lib, board] = await Promise.all([
-      getMusicLibrary(),
-      getLeaderboard()
-    ]);
-    setMusicData(lib || {});
-    setLeaderboard(board || []);
-  }
-
-  useEffect(() => {
-    refreshData().finally(() => setLoading(false));
-  }, []);
-
-  const addSong = (song: string) => {
-    const fullTitle = `${selectedBand} - ${song}`;
-    if (votingSlip.length < 5 && !votingSlip.includes(fullTitle)) {
-      setVotingSlip([...votingSlip, fullTitle]);
+  const loadData = async () => {
+    const lib = await getMusicLibrary();
+    const board = await getLeaderboard();
+    
+    if (lib === null) {
+      setStatus('error');
+    } else if (Object.keys(lib).length === 0) {
+      setStatus('empty');
+    } else {
+      setMusicData(lib);
+      setStatus('ok');
     }
+    setLeaderboard(board);
+    setLoading(false);
   };
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 uppercase">Loading...</div>;
+  useEffect(() => { loadData() }, []);
+
+  if (loading) return <div className="min-h-screen flex items-center justify-center font-black text-slate-400 uppercase">Connecting...</div>;
 
   return (
-    <main className="min-h-screen bg-slate-50 p-6 text-slate-900">
+    <main className="min-h-screen bg-slate-50 p-6 text-slate-900 font-sans">
       <header className="max-w-7xl mx-auto text-center mb-10">
         <h1 className="text-6xl font-black italic uppercase tracking-tighter">
           True Blue <span className="text-yellow-500">Tally</span> 🇦🇺
         </h1>
-      </header>
-
-      {/* LEADERBOARD */}
-      <div className="max-w-7xl mx-auto mb-10 flex gap-4 overflow-x-auto pb-4">
-        {leaderboard.map((item, i) => (
-          <div key={item.name} className="bg-white p-4 rounded-2xl border shadow-sm min-w-[200px] flex justify-between items-center">
-            <span className="font-black text-yellow-500 mr-2">#{i+1}</span>
-            <span className="font-bold text-sm truncate flex-1">{item.name}</span>
-            <span className="bg-slate-100 px-2 py-1 rounded-lg text-xs font-black ml-2">{item.votes}</span>
+        
+        {status === 'error' && (
+          <div className="mt-4 bg-red-600 text-white px-4 py-2 rounded-full text-xs font-bold uppercase animate-pulse">
+            ⚠️ Connection Error: Check Vercel Env Variables
           </div>
-        ))}
-      </div>
+        )}
+        {status === 'empty' && (
+          <div className="mt-4 bg-amber-500 text-white px-4 py-2 rounded-full text-xs font-bold uppercase">
+            ⚠️ Database found but library is empty
+          </div>
+        )}
+      </header>
 
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         {/* ARTISTS */}
         <div className="bg-white rounded-3xl p-6 border shadow-sm h-[600px] flex flex-col">
-          <h2 className="text-xs font-black uppercase text-slate-400 mb-4 tracking-widest">1. Artist</h2>
+          <h2 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">1. Artist</h2>
           <div className="overflow-y-auto space-y-1">
-            {Object.keys(musicData).map(band => (
+            {Object.keys(musicData).sort().map(band => (
               <button 
                 key={band} 
                 onClick={() => setSelectedBand(band)}
-                className={`w-full p-4 rounded-xl text-left font-bold transition-all ${selectedBand === band ? 'bg-slate-900 text-white' : 'hover:bg-slate-50'}`}
+                className={`w-full p-4 rounded-xl text-left font-bold transition-all ${selectedBand === band ? 'bg-slate-900 text-white shadow-lg' : 'hover:bg-slate-50'}`}
               >
                 {band}
               </button>
@@ -70,29 +69,29 @@ export default function Page() {
 
         {/* TRACKS */}
         <div className="bg-white rounded-3xl p-6 border shadow-sm h-[600px] flex flex-col">
-          <h2 className="text-xs font-black uppercase text-slate-400 mb-4 tracking-widest">2. Tracks</h2>
+          <h2 className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">2. Track</h2>
           <div className="overflow-y-auto space-y-1">
-            {selectedBand && musicData[selectedBand]?.map(song => (
+            {selectedBand ? musicData[selectedBand].map(song => (
               <button 
                 key={song} 
                 disabled={votingSlip.includes(`${selectedBand} - ${song}`) || votingSlip.length >= 5}
-                onClick={() => addSong(song)}
-                className="w-full p-4 rounded-xl text-left font-bold border hover:border-yellow-400 disabled:opacity-30"
+                onClick={() => setVotingSlip([...votingSlip, `${selectedBand} - ${song}`])}
+                className="w-full p-4 rounded-xl text-left font-bold border-2 border-transparent hover:border-yellow-400 transition-all disabled:opacity-20"
               >
                 {song}
               </button>
-            ))}
+            )) : <div className="h-full flex items-center justify-center text-slate-300 italic text-sm">Pick an artist</div>}
           </div>
         </div>
 
-        {/* SLIP */}
-        <div className="bg-slate-900 rounded-[2.5rem] p-8 h-[600px] text-white flex flex-col">
-          <h2 className="text-xs font-black uppercase text-slate-500 mb-6 border-b border-slate-800 pb-2">Voting Slip</h2>
-          <div className="flex-1 space-y-3 overflow-y-auto">
+        {/* VOTING SLIP */}
+        <div className="bg-slate-900 rounded-[2.5rem] p-8 h-[600px] text-white flex flex-col shadow-2xl">
+          <h2 className="text-[10px] font-black text-slate-500 uppercase mb-6 border-b border-slate-800 pb-2 tracking-widest">Voting Slip</h2>
+          <div className="flex-1 space-y-3 overflow-y-auto pr-1">
             {votingSlip.map(song => (
-              <div key={song} className="bg-slate-800 p-4 rounded-xl text-xs font-bold flex justify-between">
-                {song}
-                <button onClick={() => setVotingSlip(votingSlip.filter(s => s !== song))} className="text-slate-500">✕</button>
+              <div key={song} className="bg-slate-800/40 p-4 rounded-2xl text-xs font-bold flex justify-between items-center group">
+                <span className="flex-1 pr-2">{song}</span>
+                <button onClick={() => setVotingSlip(votingSlip.filter(s => s !== song))} className="text-slate-600 hover:text-red-400 transition-colors">✕</button>
               </div>
             ))}
           </div>
@@ -101,12 +100,12 @@ export default function Page() {
             onClick={async () => {
               await submitFinalVotes(votingSlip);
               setVotingSlip([]);
-              await refreshData();
-              alert("Votes In!");
+              await loadData();
+              alert("Ripper! Your votes are in.");
             }}
-            className="w-full bg-yellow-400 text-slate-900 p-5 rounded-2xl font-black uppercase mt-6 hover:bg-yellow-300 disabled:opacity-20"
+            className="w-full bg-yellow-400 text-slate-900 p-5 rounded-2xl font-black uppercase mt-6 hover:bg-yellow-300 transition-all disabled:opacity-10"
           >
-            Submit Votes
+            Submit {votingSlip.length} Votes
           </button>
         </div>
       </div>
