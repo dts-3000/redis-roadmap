@@ -1,4 +1,5 @@
 'use server'
+
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
@@ -9,9 +10,12 @@ const redis = new Redis({
 
 export async function submitVote(formData: FormData) {
   const song = formData.get('song') as string
-  if (condition) {
-    
-  } (!song) return
+  
+  if (!song) return
+
+  // This adds 1 to the song's score in your Upstash database
   await redis.zincrby('aus_leaderboard', 1, song)
+  
+  // This refreshes the leaderboard instantly
   revalidatePath('/')
 }
