@@ -1,5 +1,4 @@
 'use server'
-
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
@@ -10,8 +9,7 @@ const redis = new Redis({
 
 export async function submitVote(formData: FormData) {
   const song = formData.get('song') as string
-  if (!song || song.length < 2) return
-
+  if (!song) return
   await redis.zincrby('aus_leaderboard', 1, song)
   revalidatePath('/')
 }
