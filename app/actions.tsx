@@ -3,19 +3,28 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-const redis = new Redis({
-  url: process.env.KV_REST_API_URL || '',
-  token: process.env.KV_REST_API_TOKEN || '',
-})
+function redisClient() {
+  // Use the exact names visible in your Vercel Environment Variables screenshot
+  const url = process.env.KV_REST_API_URL;
+  const token = process.env.KV_REST_API_TOKEN;
+
+  if (!url || !token) {
+    console.error("Missing Environment Variables: KV_REST_API_URL/TOKEN");
+    return null;
+  }
+
+  return new Redis({ url, token });
+}
 
 export async function getMusicLibrary() {
   try {
-    // Fetches the 'music_library' key you created in Upstash
+    const redis = redisClient();
+    if (!redis) return null;
+
+    // Fetches the key from your Upstash dashboard
     const data = await redis.get('music_library');
-    
     if (!data) return {};
 
-    // Handles both JSON objects and stringified JSON
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (error) {
     console.error("Upstash Connection Error:", error);
@@ -26,6 +35,8 @@ export async function getMusicLibrary() {
 export async function submitFinalVotes(songs: string[]) {
   if (!songs || songs.length === 0) return
   try {
+    const redis = redisClient();
+    if (!redis) return;
     const pipeline = redis.pipeline()
     songs.forEach(song => {
       pipeline.zincrby('aus_leaderboard', 1, song)
@@ -39,6 +50,8 @@ export async function submitFinalVotes(songs: string[]) {
 
 export async function getLeaderboard() {
   try {
+    const redis = redisClient();
+    if (!redis) return [];
     const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
