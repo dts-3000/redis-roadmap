@@ -1,43 +1,43 @@
 'use server'
 
-import { Redis } from '@upstash/redis'
+import { Redis } from "@upstash/redis";
 import { revalidatePath } from 'next/cache'
 
 /**
- * We are manually defining the URL and Token here to bypass 
- * the 'locked' Vercel KV variables.
+ * Using the HTTP-based client recommended for Serverless/Next.js.
+ * We are using the exact strings from your previous screenshots.
  */
 const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL || '',
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
-})
+  url: "https://smiling-vervet-44012.upstash.io",
+  token: "AavsAAIncDFsZjkxODhjYzA1NTc0NDk0OTUwODc1MjA1NWVmMmY1Y3AxNDQwMTI",
+});
 
 export async function getMusicLibrary() {
   try {
-    // This fetches the 'music_library' key from your smiling-vervet database
-    const data = await redis.get('music_library');
+    // Fetches the 'music_library' key from Upstash
+    const data = await redis.get("music_library");
     
     if (!data) return {};
 
+    // If it's a string from the DB, we parse it; otherwise, return the object
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (error) {
-    // If this still fails, it means the URL/Token in Vercel are wrong
-    console.error("Connection Error:", error);
+    console.error("Database Connection Error:", error);
     return null; 
   }
 }
 
 export async function submitFinalVotes(songs: string[]) {
-  if (!songs || songs.length === 0) return
+  if (!songs || songs.length === 0) return;
   try {
-    const pipeline = redis.pipeline()
+    const pipeline = redis.pipeline();
     songs.forEach(song => {
-      pipeline.zincrby('aus_leaderboard', 1, song)
-    })
-    await pipeline.exec()
-    revalidatePath('/')
+      pipeline.zincrby('aus_leaderboard', 1, song);
+    });
+    await pipeline.exec();
+    revalidatePath('/');
   } catch (error) {
-    console.error("Vote Error:", error);
+    console.error("Vote Submission Error:", error);
   }
 }
 
@@ -47,7 +47,9 @@ export async function getLeaderboard() {
       rev: true, 
       withScores: true 
     });
+    
     if (!leaderboardRaw) return [];
+    
     const results = [];
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
