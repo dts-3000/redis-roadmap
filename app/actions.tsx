@@ -3,10 +3,6 @@
 import { Redis } from "@upstash/redis";
 import { revalidatePath } from 'next/cache'
 
-/**
- * Using the HTTP-based client recommended for Serverless/Next.js.
- * We are using the exact strings from your previous screenshots.
- */
 const redis = new Redis({
   url: "https://smiling-vervet-44012.upstash.io",
   token: "AavsAAIncDFsZjkxODhjYzA1NTc0NDk0OTUwODc1MjA1NWVmMmY1Y3AxNDQwMTI",
@@ -14,16 +10,28 @@ const redis = new Redis({
 
 export async function getMusicLibrary() {
   try {
-    // Fetches the 'music_library' key from Upstash
     const data = await redis.get("music_library");
     
+    // Debug: This will show up in your Vercel 'Logs' tab
+    console.log("Raw Data Type:", typeof data);
+
     if (!data) return {};
 
-    // If it's a string from the DB, we parse it; otherwise, return the object
-    return typeof data === 'string' ? JSON.parse(data) : data;
+    // SAFETY: If Upstash returns a string (text), we must parse it into JSON
+    if (typeof data === 'string') {
+      try {
+        return JSON.parse(data);
+      } catch (e) {
+        console.error("JSON Parsing failed. Data might be corrupted:", data);
+        return {};
+      }
+    }
+
+    // If it's already an object, just return it
+    return data;
   } catch (error) {
-    console.error("Database Connection Error:", error);
-    return null; 
+    console.error("REDIS CONNECTION ERROR:", error);
+    return null; // This triggers your 'Database Connection Failed' UI
   }
 }
 
@@ -47,9 +55,7 @@ export async function getLeaderboard() {
       rev: true, 
       withScores: true 
     });
-    
     if (!leaderboardRaw) return [];
-    
     const results = [];
     for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
