@@ -4,22 +4,25 @@ import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
 /**
- * Redis.fromEnv() automatically looks for:
- * 1. UPSTASH_REDIS_REST_URL
- * 2. UPSTASH_REDIS_REST_TOKEN
+ * We are manually defining the URL and Token here to bypass 
+ * the 'locked' Vercel KV variables.
  */
-const redis = Redis.fromEnv();
+const redis = new Redis({
+  url: process.env.UPSTASH_REDIS_REST_URL || '',
+  token: process.env.UPSTASH_REDIS_REST_TOKEN || '',
+})
 
 export async function getMusicLibrary() {
   try {
+    // This fetches the 'music_library' key from your smiling-vervet database
     const data = await redis.get('music_library');
     
     if (!data) return {};
 
-    // Upstash returns JSON as an object or a string depending on how it was saved
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (error) {
-    console.error("Upstash Connection Error:", error);
+    // If this still fails, it means the URL/Token in Vercel are wrong
+    console.error("Connection Error:", error);
     return null; 
   }
 }
