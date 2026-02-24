@@ -4,17 +4,25 @@ import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
 function redisClient() {
-  // Use the exact names visible in your Vercel Environment Variables screenshot
-  const url = process.env.KV_REST_API_URL;
-  const token = process.env.KV_REST_API_TOKEN;
+  // This looks for every name we've seen in your screenshots
+  const url = process.env.KV_REST_API_URL || 
+              process.env.UPSTASH_REDIS_REST_URL || 
+              process.env.REDIS_URL ||
+              process.env.KV_URL;
+
+  const token = process.env.KV_REST_API_TOKEN || 
+                process.env.UPSTASH_REDIS_REST_TOKEN || 
+                process.env.KV_REST_API_READ_ONLY_TOKEN;
 
   if (!url || !token) {
-    console.error("Missing Environment Variables: KV_REST_API_URL/TOKEN");
+    console.error("DEBUG: URL found:", !!url, "Token found:", !!token);
     return null;
   }
 
   return new Redis({ url, token });
 }
+
+// ... the rest of your functions (getMusicLibrary, etc.) stay the same
 
 export async function getMusicLibrary() {
   try {
