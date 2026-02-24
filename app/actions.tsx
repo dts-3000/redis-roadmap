@@ -3,58 +3,53 @@
 import { Redis } from '@upstash/redis'
 import { revalidatePath } from 'next/cache'
 
-// We initialize inside the function to ensure we get the latest Env Vars
-const getRedis = () => {
-  return new Redis({
-    url: process.env.KV_REST_API_URL || '',
-    token: process.env.KV_REST_API_TOKEN || '',
-  })
-}
+/**
+ * Redis.fromEnv() automatically looks for:
+ * 1. UPSTASH_REDIS_REST_URL
+ * 2. UPSTASH_REDIS_REST_TOKEN
+ */
+const redis = Redis.fromEnv();
 
 export async function getMusicLibrary() {
   try {
-    const redis = getRedis();
-    // This looks for the JSON key visible in your Upstash screenshot
     const data = await redis.get('music_library');
     
     if (!data) return {};
-    
-    // If Upstash returns a string, parse it; otherwise return the object
+
+    // Upstash returns JSON as an object or a string depending on how it was saved
     return typeof data === 'string' ? JSON.parse(data) : data;
   } catch (error) {
-    console.error("REDIS ERROR:", error);
-    return null; // This triggers the "Database Connection Failed" UI
+    console.error("Upstash Connection Error:", error);
+    return null; 
   }
 }
 
 export async function submitFinalVotes(songs: string[]) {
-  if (!songs || songs.length === 0) return;
+  if (!songs || songs.length === 0) return
   try {
-    const redis = getRedis();
-    const pipeline = redis.pipeline();
+    const pipeline = redis.pipeline()
     songs.forEach(song => {
-      pipeline.zincrby('aus_leaderboard', 1, song);
-    });
-    await pipeline.exec();
-    revalidatePath('/');
+      pipeline.zincrby('aus_leaderboard', 1, song)
+    })
+    await pipeline.exec()
+    revalidatePath('/')
   } catch (error) {
-    console.error("VOTE ERROR:", error);
+    console.error("Vote Error:", error);
   }
 }
 
 export async function getLeaderboard() {
   try {
-    const redis = getRedis();
-    const raw = await redis.zrange('aus_leaderboard', 0, 9, { 
+    const leaderboardRaw = await redis.zrange('aus_leaderboard', 0, 9, { 
       rev: true, 
       withScores: true 
     });
-    if (!raw) return [];
+    if (!leaderboardRaw) return [];
     const results = [];
-    for (let i = 0; i < raw.length; i += 2) {
+    for (let i = 0; i < leaderboardRaw.length; i += 2) {
       results.push({ 
-        name: raw[i] as string, 
-        votes: parseInt(raw[i + 1] as string) || 0 
+        name: leaderboardRaw[i] as string, 
+        votes: parseInt(leaderboardRaw[i + 1] as string) || 0 
       });
     }
     return results;
